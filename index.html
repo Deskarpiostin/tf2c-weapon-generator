@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TF2 Classic Random Weapon Generator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #2c2f33;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+    button {
+      background: #7289da;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-bottom: 1.5rem;
+    }
+    button:hover {
+      background: #5b6eae;
+    }
+    #output {
+      background: #23272a;
+      padding: 1.5rem;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .line {
+      margin: 0.5rem 0;
+    }
+    .label {
+      font-weight: bold;
+      color: #99aab5;
+    }
+    .attr-good {
+      color: cyan;
+      display: block;
+    }
+    .attr-bad {
+      color: red;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>TF2 Classic Random Weapon Generator</h1>
+  <button onclick="generateWeapon()">Generate Weapon</button>
+
+  <div id="output">
+    <div class="line"><span class="label">Name:</span> <span id="name">–</span></div>
+    <div class="line"><span class="label">Class(es):</span> <span id="classes">–</span></div>
+    <div class="line"><span class="label">Item Slot:</span> <span id="slot">–</span></div>
+    <div class="line"><span class="label">Quality:</span> <span id="quality">–</span></div>
+    <div class="line"><span class="label">Weapon Type:</span> <span id="type">–</span></div>
+    <div class="line"><span class="label">Attributes:</span>
+      <div id="attrs"></div>
+    </div>
+  </div>
+
+  <script>
+    // === DATA ARRAYS ===
+    const namePart1 = [' The Quick','Dream of','Hella','A Worthy','Weird','Golden','New','Official','The Lunch of','Not So Worthy','Mystic','Clockwork'];
+    const namePart2 = ['Reaper','Crusher','Howler','Hell','Doom','Mann.','Medal','Dream','Legend','Vortex'];
+
+    const allClasses = ['Scout','Soldier','Pyro','Demoman','Heavy','Engineer','Medic','Sniper','Spy'];
+    const slots = ['Primary','Secondary','Melee'];
+    const qualities = ['Unique','Vintage','Normal'];
+    const types = ['Scattergun','Pistol','Bat','Rocket Launcher','Shotgun','Shovel','Flamethrower','Flare Gun','Fireaxe','Grenade Launcher','Sticky Bomb Launcher','Bottle','Minigun','Fists','Wrench','Medi Gun','Syringe Gun','Bonesaw','Sniper Rifle','Compound Bow','Kukri','Revolver','Knife'];
+
+    const goodattributes = ['+%n Damage','+%n Fire Rate','','+%n Accuracy','On Kill: +%n Health','Regen %n Ammo on Hit','+%n Reload Speed','Weapon deploys +%n slower','On kill: Be fast for %s seconds'];
+    const badattributes  = ['-%n Damage','-%n Fire Rate','-%n Player Speed','-%n Spread on weapon','+%n more damage on yourself','When firing the weapon: Mark yourself for death for %s seconds','-%n Reload Speed','Weapon deploys +%n slower',''];
+    const goodspy        = ['On hit: +%n Cloak charge',''];
+    const badspy         = ['When getting damage: -%n Cloak charge',''];
+    const goodwrench     = ['+%n more metal','Buildings deploy +%n percent faster','-%n wasting metal on repairing buildings','-%n wasting metal on upgrading buildings','+%n buildings health',''];
+    const badwrench      = ['%n less metal','Buildings deploy %n percent slower','+%n wasting metal on repairing buildings','+%n wasting metal on upgrading buildings','-%n buildings health',''];
+
+    const typeToClass = {
+      'Scattergun':'Scout','Pistol':'Scout','Bat':'Scout',
+      'Rocket Launcher':'Soldier','Shovel':'Soldier',
+      'Flamethrower':'Pyro','Flare Gun':'Pyro','Fireaxe':'Pyro',
+      'Grenade Launcher':'Demoman','Sticky Bomb Launcher':'Demoman',
+      'Minigun':'Heavy','Fists':'Heavy','Bottle':'Heavy',
+      'Wrench':'Engineer',
+      'Medi Gun':'Medic','Syringe Gun':'Medic','Bonesaw':'Medic',
+      'Sniper Rifle':'Sniper','Compound Bow':'Sniper','Kukri':'Sniper',
+      'Revolver':'Spy','Knife':'Spy'
+    };
+
+    // UTILITIES
+    function rand(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+    function randRange(min,max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    function replacePlaceholders(str) {
+      return str
+        .replace(/%n/g, () => {
+          return /Health|Ammo/.test(str) ? randRange(1,10) : randRange(20,50) + '%';
+        })
+        .replace(/%s/g, () => randRange(1,10));
+    }
+    function pickUnique(source, used) {
+      // pick one from source not already in used
+      const options = source.filter(a => !used.has(a));
+      if (options.length === 0) return null;
+      return rand(options);
+    }
+
+    // MAIN GENERATOR
+    function generateWeapon() {
+      const type = rand(types);
+      let classes;
+      if (type === 'Shotgun') {
+        if (Math.random() < 0.2) {
+          classes = randRange(2,3) === 2
+            ? pickUnique(['Soldier','Pyro','Heavy'], new Set()) + ', ' + pickUnique(['Soldier','Pyro','Heavy'], new Set())
+            : 'Soldier, Pyro, Heavy';
+        } else {
+          classes = rand(['Soldier','Pyro','Heavy']);
+        }
+      } else {
+        classes = typeToClass[type] || rand(allClasses);
+      }
+
+      const name    = `${rand(namePart1)} ${rand(namePart2)}`;
+      const slot    = rand(slots);
+      const quality = rand(qualities);
+
+      // track used raw templates
+      const used = new Set();
+
+      const attrs = [];
+
+      // 1 & 2: two distinct goodattributes
+      for (let i = 0; i < 2; i++) {
+        const pick = pickUnique(goodattributes, used);
+        used.add(pick);
+        attrs.push({ text: replacePlaceholders(pick), cls: 'attr-good' });
+      }
+
+      // 3rd attribute
+      let source3;
+      if (classes.includes('Spy'))      source3 = goodspy;
+      else if (type === 'Wrench')       source3 = goodwrench;
+      else                               source3 = goodattributes;
+      const pick3 = pickUnique(source3, used);
+      used.add(pick3);
+      attrs.push({ text: replacePlaceholders(pick3), cls: 'attr-good' });
+
+      // 4th attribute (badattributes)
+      const pick4 = pickUnique(badattributes, used);
+      used.add(pick4);
+      attrs.push({ text: replacePlaceholders(pick4), cls: 'attr-bad' });
+
+      // 5th attribute
+      let source5;
+      if (classes.includes('Spy'))      source5 = badspy;
+      else if (type === 'Wrench')       source5 = badwrench;
+      else                               source5 = badattributes;
+      const pick5 = pickUnique(source5, used);
+      used.add(pick5);
+      attrs.push({ text: replacePlaceholders(pick5), cls: 'attr-bad' });
+
+      // render
+      document.getElementById('name').textContent    = name;
+      document.getElementById('classes').textContent = classes;
+      document.getElementById('slot').textContent    = slot;
+      document.getElementById('quality').textContent = quality;
+      document.getElementById('type').textContent    = type;
+
+      const out = document.getElementById('attrs');
+      out.innerHTML = '';
+      attrs.forEach(a => {
+        const span = document.createElement('span');
+        span.className = a.cls;
+        span.textContent = a.text;
+        out.appendChild(span);
+      });
+    }
+
+    window.onload = generateWeapon;
+  </script>
+
+</body>
+</html>
